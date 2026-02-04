@@ -1,0 +1,879 @@
+<!doctype html>
+<html lang="vi">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mô phỏng liên kết ion</title>
+  <script src="/_sdk/element_sdk.js"></script>
+  <style>
+    body {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    html {
+      height: 100%;
+    }
+
+    .container {
+      width: 90%;
+      max-width: 1200px;
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    h1 {
+      text-align: center;
+      color: #2d3748;
+      margin-bottom: 10px;
+      font-size: 2em;
+    }
+
+    .instruction {
+      text-align: center;
+      color: #4a5568;
+      margin-bottom: 30px;
+      font-size: 1em;
+    }
+
+    .molecule-selector {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-bottom: 30px;
+      flex-wrap: wrap;
+    }
+
+    .molecule-btn {
+      padding: 12px 24px;
+      font-size: 1.1em;
+      font-weight: bold;
+      border: 3px solid #667eea;
+      background: white;
+      color: #667eea;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .molecule-btn:hover {
+      background: #667eea;
+      color: white;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .molecule-btn.active {
+      background: #667eea;
+      color: white;
+    }
+
+    .simulation-area {
+      background: #f7fafc;
+      border-radius: 15px;
+      padding: 40px;
+      min-height: 400px;
+      position: relative;
+      margin-bottom: 30px;
+      border: 2px solid #e2e8f0;
+    }
+
+    .atom {
+      position: absolute;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.2em;
+      transition: all 1s ease;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .electron-shell {
+      position: absolute;
+      border: 2px dashed rgba(255, 255, 255, 0.5);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .electron {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: #ffd700;
+      border-radius: 50%;
+      box-shadow: 0 0 10px #ffd700;
+      transition: all 1.5s ease;
+      z-index: 10;
+    }
+
+    .electron.transferring {
+      background: #ff6b6b;
+      box-shadow: 0 0 15px #ff6b6b;
+      transform: scale(1.3);
+    }
+
+    .ion-label {
+      position: absolute;
+      font-size: 1.5em;
+      font-weight: bold;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .control-btn {
+      padding: 15px 40px;
+      font-size: 1.1em;
+      font-weight: bold;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .start-btn {
+      background: #48bb78;
+      color: white;
+    }
+
+    .start-btn:hover {
+      background: #38a169;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(72, 187, 120, 0.4);
+    }
+
+    .reset-btn {
+      background: #ed8936;
+      color: white;
+    }
+
+    .reset-btn:hover {
+      background: #dd6b20;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(237, 137, 54, 0.4);
+    }
+
+    .electron-config-panel {
+      background: #f0f8ff;
+      border-radius: 10px;
+      padding: 20px;
+      margin-top: 20px;
+      border: 2px solid #4299e1;
+    }
+
+    .electron-config-panel h3 {
+      color: #2d3748;
+      margin-top: 0;
+      font-size: 1.3em;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .config-section {
+      margin-bottom: 20px;
+    }
+
+    .config-section h4 {
+      color: #4a5568;
+      margin-bottom: 10px;
+      font-size: 1.1em;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 5px;
+    }
+
+    .config-display {
+      transition: opacity 0.8s ease;
+    }
+
+    .atom-config {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+      padding: 8px 12px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .atom-name {
+      font-weight: bold;
+      color: #2d3748;
+      min-width: 40px;
+      font-size: 1.1em;
+    }
+
+    .config-text {
+      font-family: 'Courier New', monospace;
+      color: #4299e1;
+      font-weight: bold;
+      margin-left: 10px;
+      flex: 1;
+      font-size: 1em;
+    }
+
+    .electron-count {
+      color: #718096;
+      font-size: 0.9em;
+      font-style: italic;
+      margin-left: 10px;
+    }
+
+    .info-panel {
+      background: #edf2f7;
+      border-radius: 10px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+
+    .info-panel h3 {
+      color: #2d3748;
+      margin-top: 0;
+      font-size: 1.3em;
+    }
+
+    .info-panel p {
+      color: #4a5568;
+      line-height: 1.6;
+      margin: 10px 0;
+      font-size: 1em;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    .forming {
+      animation: pulse 0.5s ease-in-out;
+    }
+  </style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+  <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
+ </head>
+ <body>
+  <div class="container">
+   <h1 id="main-title">Mô phỏng hình thành liên kết ion</h1>
+   <p class="instruction" id="instruction-text">Chọn phân tử và nhấn "Bắt đầu" để xem quá trình hình thành liên kết ion</p>
+   <p class="instruction" id="instruction-text">Thiết kế: Nguyễn Mạnh Hưng</p>
+   <div class="molecule-selector"><button class="molecule-btn active" data-molecule="NaCl">NaCl</button> <button class="molecule-btn" data-molecule="CaCl2">CaCl₂</button> <button class="molecule-btn" data-molecule="Na2O">Na₂O</button>
+   </div>
+   <div class="simulation-area" id="simulation-area"></div>
+   <div class="controls"><button class="control-btn start-btn" id="start-btn">Bắt đầu</button> <button class="control-btn reset-btn" id="reset-btn">Đặt lại</button>
+   </div>
+   <div class="electron-config-panel" id="electron-config-panel">
+    <h3>Cấu hình electron</h3>
+    <div class="config-section">
+     <h4>Trước khi hình thành liên kết:</h4>
+     <div id="before-config" class="config-display">
+      <div class="atom-config"><span class="atom-name">Na:</span> <span class="config-text">1s² 2s² 2p⁶ 3s¹</span> <span class="electron-count">(11 electron)</span>
+      </div>
+      <div class="atom-config"><span class="atom-name">Cl:</span> <span class="config-text">1s² 2s² 2p⁶ 3s² 3p⁵</span> <span class="electron-count">(17 electron)</span>
+      </div>
+     </div>
+    </div>
+    <div class="config-section">
+     <h4>Sau khi hình thành liên kết:</h4>
+     <div id="after-config" class="config-display" style="opacity: 0.3;">
+      <div class="atom-config"><span class="atom-name">Na⁺:</span> <span class="config-text">1s² 2s² 2p⁶</span> <span class="electron-count">(10 electron)</span>
+      </div>
+      <div class="atom-config"><span class="atom-name">Cl⁻:</span> <span class="config-text">1s² 2s² 2p⁶ 3s² 3p⁶</span> <span class="electron-count">(18 electron)</span>
+      </div>
+     </div>
+    </div>
+   </div>
+   <div class="info-panel" id="info-panel">
+    <h3>Về phân tử NaCl</h3>
+    <p><strong>Quá trình:</strong> Natri (Na) mất 1 electron để trở thành Na⁺, Clo (Cl) nhận 1 electron để trở thành Cl⁻</p>
+    <p><strong>Liên kết:</strong> Lực hút tĩnh điện giữa ion Na⁺ và Cl⁻ tạo thành liên kết ion</p>
+    <p><strong>Công thức:</strong> Na + Cl → Na⁺Cl⁻ (NaCl)</p>
+   </div>
+  </div>
+  <script>
+    const defaultConfig = {
+      main_title: "Mô phỏng hình thành liên kết ion",
+      instruction_text: "Chọn phân tử và nhấn \"Bắt đầu\" để xem quá trình hình thành liên kết ion",
+      start_button_text: "Bắt đầu",
+      reset_button_text: "Đặt lại",
+      background_color: "#667eea",
+      surface_color: "#ffffff",
+      text_color: "#2d3748",
+      primary_action_color: "#48bb78",
+      secondary_action_color: "#ed8936"
+    };
+
+    let currentMolecule = 'NaCl';
+    let isAnimating = false;
+
+    const moleculeData = {
+      NaCl: {
+        atoms: [
+          { element: 'Na', color: '#9b59b6', size: 80, electrons: 1, x: 150, y: 200 },
+          { element: 'Cl', color: '#27ae60', size: 90, electrons: 7, x: 450, y: 200 }
+        ],
+        info: {
+          title: 'Về phân tử NaCl',
+          process: 'Natri (Na) mất 1 electron để trở thành Na⁺, Clo (Cl) nhận 1 electron để trở thành Cl⁻',
+          bond: 'Lực hút tĩnh điện giữa ion Na⁺ và Cl⁻ tạo thành liên kết ion',
+          formula: 'Na + Cl → Na⁺Cl⁻ (NaCl)'
+        },
+        electronConfig: {
+          before: [
+            { name: 'Na', config: '1s² 2s² 2p⁶ 3s¹', electrons: 11 },
+            { name: 'Cl', config: '1s² 2s² 2p⁶ 3s² 3p⁵', electrons: 17 }
+          ],
+          after: [
+            { name: 'Na⁺', config: '1s² 2s² 2p⁶', electrons: 10 },
+            { name: 'Cl⁻', config: '1s² 2s² 2p⁶ 3s² 3p⁶', electrons: 18 }
+          ]
+        }
+      },
+      CaCl2: {
+        atoms: [
+          { element: 'Ca', color: '#e74c3c', size: 85, electrons: 2, x: 300, y: 200 },
+          { element: 'Cl', color: '#27ae60', size: 90, electrons: 7, x: 100, y: 200 },
+          { element: 'Cl', color: '#27ae60', size: 90, electrons: 7, x: 500, y: 200 }
+        ],
+        info: {
+          title: 'Về phân tử CaCl₂',
+          process: 'Canxi (Ca) mất 2 electron để trở thành Ca²⁺, mỗi Clo (Cl) nhận 1 electron để trở thành Cl⁻',
+          bond: 'Lực hút tĩnh điện giữa ion Ca²⁺ và 2 ion Cl⁻ tạo thành liên kết ion',
+          formula: 'Ca + 2Cl → Ca²⁺(Cl⁻)₂ (CaCl₂)'
+        },
+        electronConfig: {
+          before: [
+            { name: 'Ca', config: '1s² 2s² 2p⁶ 3s² 3p⁶ 4s²', electrons: 20 },
+            { name: 'Cl', config: '1s² 2s² 2p⁶ 3s² 3p⁵', electrons: 17 },
+            { name: 'Cl', config: '1s² 2s² 2p⁶ 3s² 3p⁵', electrons: 17 }
+          ],
+          after: [
+            { name: 'Ca²⁺', config: '1s² 2s² 2p⁶ 3s² 3p⁶', electrons: 18 },
+            { name: 'Cl⁻', config: '1s² 2s² 2p⁶ 3s² 3p⁶', electrons: 18 },
+            { name: 'Cl⁻', config: '1s² 2s² 2p⁶ 3s² 3p⁶', electrons: 18 }
+          ]
+        }
+      },
+      Na2O: {
+        atoms: [
+          { element: 'Na', color: '#9b59b6', size: 80, electrons: 1, x: 100, y: 200 },
+          { element: 'Na', color: '#9b59b6', size: 80, electrons: 1, x: 500, y: 200 },
+          { element: 'O', color: '#e67e22', size: 85, electrons: 6, x: 300, y: 200 }
+        ],
+        info: {
+          title: 'Về phân tử Na₂O',
+          process: 'Mỗi Natri (Na) mất 1 electron để trở thành Na⁺, Oxy (O) nhận 2 electron để trở thành O²⁻',
+          bond: 'Lực hút tĩnh điện giữa 2 ion Na⁺ và ion O²⁻ tạo thành liên kết ion',
+          formula: '2Na + O → (Na⁺)₂O²⁻ (Na₂O)'
+        },
+        electronConfig: {
+          before: [
+            { name: 'Na', config: '1s² 2s² 2p⁶ 3s¹', electrons: 11 },
+            { name: 'Na', config: '1s² 2s² 2p⁶ 3s¹', electrons: 11 },
+            { name: 'O', config: '1s² 2s² 2p⁴', electrons: 8 }
+          ],
+          after: [
+            { name: 'Na⁺', config: '1s² 2s² 2p⁶', electrons: 10 },
+            { name: 'Na⁺', config: '1s² 2s² 2p⁶', electrons: 10 },
+            { name: 'O²⁻', config: '1s² 2s² 2p⁶', electrons: 10 }
+          ]
+        }
+      }
+    };
+
+    function drawAtom(atom, index) {
+      const atomContainer = document.createElement('div');
+      atomContainer.className = 'atom-container';
+      atomContainer.id = `atom-container-${index}`;
+      atomContainer.style.position = 'absolute';
+      atomContainer.style.left = `${atom.x}px`;
+      atomContainer.style.top = `${atom.y}px`;
+      atomContainer.style.transition = 'all 1s ease';
+
+      const atomDiv = document.createElement('div');
+      atomDiv.className = 'atom';
+      atomDiv.id = `atom-${index}`;
+      atomDiv.style.width = `${atom.size}px`;
+      atomDiv.style.height = `${atom.size}px`;
+      atomDiv.style.background = atom.color;
+      atomDiv.style.color = 'white';
+      atomDiv.style.position = 'relative';
+      atomDiv.textContent = atom.element;
+
+      const shell = document.createElement('div');
+      shell.className = 'electron-shell';
+      shell.id = `shell-${index}`;
+      shell.style.width = `${atom.size + 30}px`;
+      shell.style.height = `${atom.size + 30}px`;
+      shell.style.position = 'absolute';
+      shell.style.left = `-15px`;
+      shell.style.top = `-15px`;
+
+      for (let i = 0; i < atom.electrons; i++) {
+        const electron = document.createElement('div');
+        electron.className = 'electron';
+        const angle = (i / atom.electrons) * 2 * Math.PI;
+        const radius = (atom.size + 30) / 2;
+        const ex = Math.cos(angle) * radius + radius - 6;
+        const ey = Math.sin(angle) * radius + radius - 6;
+        electron.style.left = `${ex}px`;
+        electron.style.top = `${ey}px`;
+        electron.id = `electron-${index}-${i}`;
+        shell.appendChild(electron);
+      }
+
+      atomContainer.appendChild(atomDiv);
+      atomContainer.appendChild(shell);
+
+      return atomContainer;
+    }
+
+    function renderMolecule() {
+      const area = document.getElementById('simulation-area');
+      area.innerHTML = '';
+
+      const data = moleculeData[currentMolecule];
+      data.atoms.forEach((atom, index) => {
+        const atomContainer = drawAtom(atom, index);
+        area.appendChild(atomContainer);
+      });
+
+      // Cập nhật thông tin phân tử
+      const info = document.getElementById('info-panel');
+      info.innerHTML = `
+        <h3>${data.info.title}</h3>
+        <p><strong>Quá trình:</strong> ${data.info.process}</p>
+        <p><strong>Liên kết:</strong> ${data.info.bond}</p>
+        <p><strong>Công thức:</strong> ${data.info.formula}</p>
+      `;
+
+      // Cập nhật cấu hình electron
+      updateElectronConfig();
+    }
+
+    function updateElectronConfig() {
+      const data = moleculeData[currentMolecule];
+      const beforeConfig = document.getElementById('before-config');
+      const afterConfig = document.getElementById('after-config');
+
+      // Hiển thị cấu hình trước khi hình thành liên kết
+      beforeConfig.innerHTML = '';
+      data.electronConfig.before.forEach(atom => {
+        const atomDiv = document.createElement('div');
+        atomDiv.className = 'atom-config';
+        atomDiv.innerHTML = `
+          <span class="atom-name">${atom.name}:</span>
+          <span class="config-text">${atom.config}</span>
+          <span class="electron-count">(${atom.electrons} electron)</span>
+        `;
+        beforeConfig.appendChild(atomDiv);
+      });
+
+      // Hiển thị cấu hình sau khi hình thành liên kết (mờ ban đầu)
+      afterConfig.innerHTML = '';
+      afterConfig.style.opacity = '0.3';
+      data.electronConfig.after.forEach(atom => {
+        const atomDiv = document.createElement('div');
+        atomDiv.className = 'atom-config';
+        atomDiv.innerHTML = `
+          <span class="atom-name">${atom.name}:</span>
+          <span class="config-text">${atom.config}</span>
+          <span class="electron-count">(${atom.electrons} electron)</span>
+        `;
+        afterConfig.appendChild(atomDiv);
+      });
+    }
+
+    function animateElectronTransfer(fromAtom, toAtom, electronIndex, callback) {
+      const fromElectron = document.getElementById(`electron-${fromAtom}-${electronIndex}`);
+      const fromContainer = document.getElementById(`atom-container-${fromAtom}`);
+      const toContainer = document.getElementById(`atom-container-${toAtom}`);
+      const toShell = document.getElementById(`shell-${toAtom}`);
+      
+      if (!fromElectron || !fromContainer || !toContainer || !toShell) return;
+      
+      // Lấy vị trí tuyệt đối của electron
+      const fromRect = fromContainer.getBoundingClientRect();
+      const toRect = toContainer.getBoundingClientRect();
+      const electronRect = fromElectron.getBoundingClientRect();
+      const areaRect = document.getElementById('simulation-area').getBoundingClientRect();
+      
+      // Tạo electron di chuyển
+      const movingElectron = document.createElement('div');
+      movingElectron.className = 'electron transferring';
+      movingElectron.style.position = 'absolute';
+      movingElectron.style.left = `${electronRect.left - areaRect.left}px`;
+      movingElectron.style.top = `${electronRect.top - areaRect.top}px`;
+      movingElectron.style.zIndex = '100';
+      
+      document.getElementById('simulation-area').appendChild(movingElectron);
+      
+      // Ẩn electron gốc
+      fromElectron.style.opacity = '0';
+      
+      // Di chuyển electron
+      setTimeout(() => {
+        movingElectron.style.left = `${toRect.left - areaRect.left + 40}px`;
+        movingElectron.style.top = `${toRect.top - areaRect.top + 40}px`;
+      }, 100);
+      
+      // Hoàn thành chuyển electron và thêm vào nguyên tử nhận
+      setTimeout(() => {
+        movingElectron.remove();
+        
+        // Thêm electron mới vào nguyên tử nhận
+        const data = moleculeData[currentMolecule];
+        const toAtomData = data.atoms[toAtom];
+        const currentElectronCount = toShell.children.length;
+        
+        const newElectron = document.createElement('div');
+        newElectron.className = 'electron';
+        newElectron.id = `electron-${toAtom}-${currentElectronCount}`;
+        
+        // Tính vị trí cho electron mới
+        const angle = (currentElectronCount / (currentElectronCount + 1)) * 2 * Math.PI;
+        const radius = (toAtomData.size + 30) / 2;
+        const ex = Math.cos(angle) * radius + radius - 6;
+        const ey = Math.sin(angle) * radius + radius - 6;
+        
+        newElectron.style.left = `${ex}px`;
+        newElectron.style.top = `${ey}px`;
+        newElectron.style.opacity = '0';
+        
+        toShell.appendChild(newElectron);
+        
+        // Hiển thị electron mới với hiệu ứng
+        setTimeout(() => {
+          newElectron.style.opacity = '1';
+          newElectron.style.background = '#00ff88';
+          newElectron.style.boxShadow = '0 0 15px #00ff88';
+          
+          // Sắp xếp lại tất cả electron xung quanh nguyên tử nhận
+          const allElectrons = toShell.children;
+          for (let i = 0; i < allElectrons.length; i++) {
+            const electron = allElectrons[i];
+            const newAngle = (i / allElectrons.length) * 2 * Math.PI;
+            const newEx = Math.cos(newAngle) * radius + radius - 6;
+            const newEy = Math.sin(newAngle) * radius + radius - 6;
+            
+            electron.style.left = `${newEx}px`;
+            electron.style.top = `${newEy}px`;
+          }
+          
+          // Sau một lúc, đổi màu electron mới về bình thường
+          setTimeout(() => {
+            newElectron.style.background = '#ffd700';
+            newElectron.style.boxShadow = '0 0 10px #ffd700';
+          }, 1000);
+          
+        }, 100);
+        
+        if (callback) callback();
+      }, 1600);
+    }
+
+    function animateIonFormation() {
+      if (isAnimating) return;
+      isAnimating = true;
+
+      const data = moleculeData[currentMolecule];
+      
+      // Bước 1: Di chuyển nguyên tử lại gần nhau
+      setTimeout(() => {
+        if (currentMolecule === 'NaCl') {
+          const naContainer = document.getElementById('atom-container-0');
+          const clContainer = document.getElementById('atom-container-1');
+          
+          naContainer.style.left = '250px';
+          clContainer.style.left = '350px';
+          
+          // Bước 2: Chuyển electron từ Na sang Cl
+          setTimeout(() => {
+            animateElectronTransfer(0, 1, 0, () => {
+              // Bước 3: Hiển thị ion
+              const na = document.getElementById('atom-0');
+              const cl = document.getElementById('atom-1');
+              
+              na.classList.add('forming');
+              cl.classList.add('forming');
+              
+              const naLabel = document.createElement('div');
+              naLabel.className = 'ion-label';
+              naLabel.textContent = 'Na⁺';
+              naLabel.style.left = '260px';
+              naLabel.style.top = '150px';
+              naLabel.style.color = defaultConfig.primary_action_color;
+              
+              const clLabel = document.createElement('div');
+              clLabel.className = 'ion-label';
+              clLabel.textContent = 'Cl⁻';
+              clLabel.style.left = '360px';
+              clLabel.style.top = '150px';
+              clLabel.style.color = defaultConfig.primary_action_color;
+              
+              document.getElementById('simulation-area').appendChild(naLabel);
+              document.getElementById('simulation-area').appendChild(clLabel);
+              
+              setTimeout(() => {
+                naLabel.style.opacity = '1';
+                clLabel.style.opacity = '1';
+                
+                // Hiển thị cấu hình electron sau khi hình thành liên kết
+                const afterConfig = document.getElementById('after-config');
+                afterConfig.style.opacity = '1';
+                
+                isAnimating = false;
+              }, 100);
+            });
+          }, 1000);
+          
+        } else if (currentMolecule === 'CaCl2') {
+          const caContainer = document.getElementById('atom-container-0');
+          const cl1Container = document.getElementById('atom-container-1');
+          const cl2Container = document.getElementById('atom-container-2');
+          
+          // Ca ở giữa, 2 Cl di chuyển từ 2 bên vào
+          caContainer.style.left = '300px';
+          cl1Container.style.left = '200px';
+          cl2Container.style.left = '400px';
+          
+          setTimeout(() => {
+            // Chuyển electron đầu tiên từ Ca sang Cl1
+            animateElectronTransfer(0, 1, 0, () => {
+              // Chuyển electron thứ hai từ Ca sang Cl2
+              setTimeout(() => {
+                animateElectronTransfer(0, 2, 1, () => {
+                  const ca = document.getElementById('atom-0');
+                  const cl1 = document.getElementById('atom-1');
+                  const cl2 = document.getElementById('atom-2');
+                  
+                  ca.classList.add('forming');
+                  cl1.classList.add('forming');
+                  cl2.classList.add('forming');
+                  
+                  const caLabel = document.createElement('div');
+                  caLabel.className = 'ion-label';
+                  caLabel.textContent = 'Ca²⁺';
+                  caLabel.style.left = '305px';
+                  caLabel.style.top = '150px';
+                  caLabel.style.color = defaultConfig.primary_action_color;
+                  
+                  const cl1Label = document.createElement('div');
+                  cl1Label.className = 'ion-label';
+                  cl1Label.textContent = 'Cl⁻';
+                  cl1Label.style.left = '205px';
+                  cl1Label.style.top = '150px';
+                  cl1Label.style.color = defaultConfig.primary_action_color;
+                  
+                  const cl2Label = document.createElement('div');
+                  cl2Label.className = 'ion-label';
+                  cl2Label.textContent = 'Cl⁻';
+                  cl2Label.style.left = '405px';
+                  cl2Label.style.top = '150px';
+                  cl2Label.style.color = defaultConfig.primary_action_color;
+                  
+                  const area = document.getElementById('simulation-area');
+                  area.appendChild(caLabel);
+                  area.appendChild(cl1Label);
+                  area.appendChild(cl2Label);
+                  
+                  setTimeout(() => {
+                    caLabel.style.opacity = '1';
+                    cl1Label.style.opacity = '1';
+                    cl2Label.style.opacity = '1';
+                    
+                    // Hiển thị cấu hình electron sau khi hình thành liên kết
+                    const afterConfig = document.getElementById('after-config');
+                    afterConfig.style.opacity = '1';
+                    
+                    isAnimating = false;
+                  }, 100);
+                });
+              }, 500);
+            });
+          }, 1000);
+          
+        } else if (currentMolecule === 'Na2O') {
+          const na1Container = document.getElementById('atom-container-0');
+          const na2Container = document.getElementById('atom-container-1');
+          const oContainer = document.getElementById('atom-container-2');
+          
+          // O ở giữa, 2 Na di chuyển từ 2 bên vào
+          na1Container.style.left = '200px';
+          na2Container.style.left = '400px';
+          oContainer.style.left = '300px';
+          
+          setTimeout(() => {
+            // Chuyển electron từ Na1 sang O
+            animateElectronTransfer(0, 2, 0, () => {
+              // Chuyển electron từ Na2 sang O
+              setTimeout(() => {
+                animateElectronTransfer(1, 2, 0, () => {
+                  const na1 = document.getElementById('atom-0');
+                  const na2 = document.getElementById('atom-1');
+                  const o = document.getElementById('atom-2');
+                  
+                  na1.classList.add('forming');
+                  na2.classList.add('forming');
+                  o.classList.add('forming');
+                  
+                  const na1Label = document.createElement('div');
+                  na1Label.className = 'ion-label';
+                  na1Label.textContent = 'Na⁺';
+                  na1Label.style.left = '205px';
+                  na1Label.style.top = '150px';
+                  na1Label.style.color = defaultConfig.primary_action_color;
+                  
+                  const na2Label = document.createElement('div');
+                  na2Label.className = 'ion-label';
+                  na2Label.textContent = 'Na⁺';
+                  na2Label.style.left = '405px';
+                  na2Label.style.top = '150px';
+                  na2Label.style.color = defaultConfig.primary_action_color;
+                  
+                  const oLabel = document.createElement('div');
+                  oLabel.className = 'ion-label';
+                  oLabel.textContent = 'O²⁻';
+                  oLabel.style.left = '305px';
+                  oLabel.style.top = '150px';
+                  oLabel.style.color = defaultConfig.primary_action_color;
+                  
+                  const area = document.getElementById('simulation-area');
+                  area.appendChild(na1Label);
+                  area.appendChild(na2Label);
+                  area.appendChild(oLabel);
+                  
+                  setTimeout(() => {
+                    na1Label.style.opacity = '1';
+                    na2Label.style.opacity = '1';
+                    oLabel.style.opacity = '1';
+                    
+                    // Hiển thị cấu hình electron sau khi hình thành liên kết
+                    const afterConfig = document.getElementById('after-config');
+                    afterConfig.style.opacity = '1';
+                    
+                    isAnimating = false;
+                  }, 100);
+                });
+              }, 500);
+            });
+          }, 1000);
+        }
+      }, 500);
+    }
+
+    document.querySelectorAll('.molecule-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (isAnimating) return;
+        
+        document.querySelectorAll('.molecule-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentMolecule = btn.dataset.molecule;
+        renderMolecule();
+      });
+    });
+
+    document.getElementById('start-btn').addEventListener('click', () => {
+      animateIonFormation();
+    });
+
+    document.getElementById('reset-btn').addEventListener('click', () => {
+      if (isAnimating) return;
+      renderMolecule();
+    });
+
+    async function onConfigChange(config) {
+      document.getElementById('main-title').textContent = config.main_title || defaultConfig.main_title;
+      document.getElementById('instruction-text').textContent = config.instruction_text || defaultConfig.instruction_text;
+      document.getElementById('start-btn').textContent = config.start_button_text || defaultConfig.start_button_text;
+      document.getElementById('reset-btn').textContent = config.reset_button_text || defaultConfig.reset_button_text;
+      
+      document.body.style.background = `linear-gradient(135deg, ${config.background_color || defaultConfig.background_color} 0%, #764ba2 100%)`;
+      document.querySelector('.container').style.background = config.surface_color || defaultConfig.surface_color;
+      document.querySelector('h1').style.color = config.text_color || defaultConfig.text_color;
+      document.querySelector('.instruction').style.color = config.text_color || defaultConfig.text_color;
+      document.querySelector('.start-btn').style.background = config.primary_action_color || defaultConfig.primary_action_color;
+      document.querySelector('.reset-btn').style.background = config.secondary_action_color || defaultConfig.secondary_action_color;
+      
+      const labels = document.querySelectorAll('.ion-label');
+      labels.forEach(label => {
+        label.style.color = config.primary_action_color || defaultConfig.primary_action_color;
+      });
+    }
+
+    if (window.elementSdk) {
+      window.elementSdk.init({
+        defaultConfig,
+        onConfigChange,
+        mapToCapabilities: (config) => ({
+          recolorables: [
+            {
+              get: () => config.background_color || defaultConfig.background_color,
+              set: (value) => {
+                config.background_color = value;
+                window.elementSdk.setConfig({ background_color: value });
+              }
+            },
+            {
+              get: () => config.surface_color || defaultConfig.surface_color,
+              set: (value) => {
+                config.surface_color = value;
+                window.elementSdk.setConfig({ surface_color: value });
+              }
+            },
+            {
+              get: () => config.text_color || defaultConfig.text_color,
+              set: (value) => {
+                config.text_color = value;
+                window.elementSdk.setConfig({ text_color: value });
+              }
+            },
+            {
+              get: () => config.primary_action_color || defaultConfig.primary_action_color,
+              set: (value) => {
+                config.primary_action_color = value;
+                window.elementSdk.setConfig({ primary_action_color: value });
+              }
+            },
+            {
+              get: () => config.secondary_action_color || defaultConfig.secondary_action_color,
+              set: (value) => {
+                config.secondary_action_color = value;
+                window.elementSdk.setConfig({ secondary_action_color: value });
+              }
+            }
+          ],
+          borderables: [],
+          fontEditable: undefined,
+          fontSizeable: undefined
+        }),
+        mapToEditPanelValues: (config) => new Map([
+          ["main_title", config.main_title || defaultConfig.main_title],
+          ["instruction_text", config.instruction_text || defaultConfig.instruction_text],
+          ["start_button_text", config.start_button_text || defaultConfig.start_button_text],
+          ["reset_button_text", config.reset_button_text || defaultConfig.reset_button_text]
+        ])
+      });
+    }
+
+    renderMolecule();
+  </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'999c851ee39e02be',t:'MTc2MjM0NzQ3OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
